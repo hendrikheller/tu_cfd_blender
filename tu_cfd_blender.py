@@ -33,7 +33,7 @@ def clean_line(s):
 def parse_state(path):
     """Parse a state.dat file.
 
-    long description goes here
+    <long description goes here>
 
     Parameters
     ----------
@@ -109,6 +109,21 @@ class StateDat:
         return self.data[step]
 
     def get_var(self, var):
+        """Returns data for a specified variable.
+
+        Tries to match 'var' to one of the 28 predefined variables. If matching is successfull, all data points for this
+        variable is returned.
+
+        Parameters
+        ----------
+        var : string
+            A string containing the name of the variable of which the data is to be returned.
+
+        Returns
+        -------
+        data[:, var] : [values]
+            A list of all data points for a specific variable.
+        """
         assert isinstance(var, str)
         var = var.lower()
         if var in self.varmapping:
@@ -117,6 +132,23 @@ class StateDat:
             raise Exception("Var could not be matched.")
 
     def get_step_var(self, step, var):
+        """Returns the data of a specific step for a specific variable.
+
+        Tries to match 'var' to one of the 28 predefined variables. If matching is successful, the data point for 'var'
+        at the timestep 'step' is returned
+
+        Parameters
+        ----------
+        step : int
+            The timestep to be returned.
+        var : string
+            A string containing the name of the variable of which the data is to be returned.
+
+        Returns
+        -------
+        data[step, var] : float
+            The data point for 'var' at 'timestep'.
+        """
         assert isinstance(var, str)
         assert isinstance(step, int)
         var = var.lower()
