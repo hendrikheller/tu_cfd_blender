@@ -182,7 +182,8 @@ def parse_foout(path):
         data.append([])
         for i in range(dims[0]*dims[1]):
             l = list(map(float, clean_line(lines[i]).split(' ')))
-            data[step].append((l[0], l[1], l[2]))
+            # z coordinates are inverted
+            data[step].append((l[0], l[1], -l[2]))
         del lines[:dims[0]*dims[1]]
         step += 1
 
@@ -265,10 +266,36 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
 
 
 def lin(x):
+    """A linear function for shapekey smoothing.
+
+    A linear function designed to return 0 for x=-1 and x=1 and to return 1 for x=0
+
+    Parameters
+    ----------
+    x : float
+        The input value.
+
+    Returns
+    -------
+    float
+    """
     return -1*abs(float(x)) + 1
 
 
 def quad(x):
+    """A quadratic function for shapekey smoothing.
+
+    A quadratic function designed to return 0 for x=-1 and x=1 and to return 1 for x=0
+
+    Parameters
+    ----------
+    x : float
+        The input value.
+
+    Returns
+    -------
+    float
+    """
     return -(x*x)+1
 
 
@@ -296,14 +323,8 @@ def current_milli_time():
 t0 = current_milli_time()
 da = parse_foout(path_foout)
 
-mapping = calc_face_mapping(da[1][0], da[1][1])
-
-create_animated_surface("surface_quad_0", da, quad, 0)
-create_animated_surface("surface_quad_1", da, quad, 1)
-create_animated_surface("surface_quad_2", da, quad, 2)
-
+create_animated_surface("surface_quad_0", da, lin, 0)
 
 t1 = current_milli_time()
-
 
 print ("runtime in millis: " + str(t1-t0))
