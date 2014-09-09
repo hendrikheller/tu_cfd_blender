@@ -5,10 +5,6 @@ import time
 import numpy as np
 import bpy
 
-#these paths are, of course, only for temporary testing
-path_state = "d:/blender kram/uhareksches ding/state_square.dat"
-path_foout = "d:/blender kram/uhareksches ding/foout_rect.dat"
-
 
 def clean_line(s):
     """Cleans a string of multiple whitespaces and line breaks
@@ -42,8 +38,8 @@ def parse_state(path):
 
     Returns
     -------
-    t : string
-        A string void of double white spaces and line breaks.
+    dat : [[values], ...]
+        A list of lists each containing one step of parsed data.
     """
     assert isinstance(path, str)
     # transform path for os specifics
@@ -159,6 +155,20 @@ class StateDat:
 
 
 def parse_foout(path):
+    """Parse a foout.dat file.
+
+    <long description goes here>
+
+    Parameters
+    ----------
+    path : string
+        The system path to the foout.dat file.
+
+    Returns
+    -------
+    data, dims : [[vertexes], ...], (i, j, k)
+        List of lists of all vertex infos for steps in the foout.dat and the dimensions of each step.
+    """
     assert isinstance(path, str)
     # transform path for os specifics
     path = os.path.normpath(path)
@@ -191,6 +201,23 @@ def parse_foout(path):
 
 
 def calc_face_mapping(dim_i, dim_j):
+    """Calculates the face mapping of rectangular meshes
+
+    The connections between vertexes within the rectangular meshes are implicit, but have to be specified. This function
+    calculates such a mapping.
+
+    Parameters
+    ----------
+    dim_i : int
+        First dimension of the rectangular mesh.
+    dim_j : int
+        Second dimension of the rectangular mesh.
+
+    Returns
+    -------
+    mapping : [(v0, v1, v2, v3)]
+        List of tuples each containing four vertexes that together form a face.
+    """
     assert isinstance(dim_i, int)
     assert isinstance(dim_j, int)
     assert dim_i > 0 and dim_j > 0
@@ -210,6 +237,20 @@ def calc_face_mapping(dim_i, dim_j):
 
 
 def return_digits(s):
+    """Returns all digits within a string.
+
+    Filters a string completely and returns only the occuring digits.
+
+    Parameters
+    ----------
+    s : string
+        The string to be filtered for digits.
+
+    Returns
+    -------
+    s : string
+        A string containing only the digits occuring in the original string.
+    """
     assert isinstance(s, str)
     result = ""
     for c in s:
@@ -219,6 +260,22 @@ def return_digits(s):
 
 
 def calc_steps(start, stop, amount):
+    """Returns a list of steps between 'start' and 'stop'
+
+    Parameters
+    ----------
+    start : int
+        The starting point.
+    stop : int
+        The ending point.
+    amount : int
+        The amount of steps to be calculated.
+
+    Returns
+    -------
+    ret : [step0, step1, ...]
+        A list of equally spaced steps between 'start' and 'stop'.
+    """
     assert isinstance(start, int)
     assert isinstance(stop, int)
     assert isinstance(amount, int)
@@ -230,6 +287,24 @@ def calc_steps(start, stop, amount):
 
 
 def insert_shapekey_keyframes(key, k, smoothing_function, smoothing_amount):
+    """Creates keyframes for shapekeys
+
+    <long description>
+
+    Parameters
+    ----------
+    key : object.shape_key
+        The starting point.
+    stop : int
+        The ending point.
+    amount : int
+        The amount of steps to be calculated.
+
+    Returns
+    -------
+    ret : [step0, step1, ...]
+        A list of equally spaced steps between 'start' and 'stop'.
+    """
     steps = calc_steps(-1, 1, 3+(smoothing_amount*2))
     for i, s in enumerate(steps):
         key.value = smoothing_function(s)
@@ -237,6 +312,25 @@ def insert_shapekey_keyframes(key, k, smoothing_function, smoothing_amount):
 
 
 def create_mesh(name, vertex_data, face_data):
+    """Creates a new mesh object.
+
+    Creates a new mesh in the active Blender environment. For every entry in 'vertex_data'  a vertex is created at the
+    specified coordinates. Faces are created according to the face mapping in 'face_data'.
+
+    Parameters
+    ----------
+    name : string
+        The name of the mesh object to be created.
+    vertex_data : [(x, y, z), ...]
+        List of tuples, each containing the values for the coordinate system as floats.
+    face_data : [(v0, v1, v2, v3), ...]
+        List of tuples each containing four vertexes that together form a face.
+
+    Returns
+    -------
+    ob : Blender.object
+        Handle for the created mesh.
+    """
     mesh = bpy.data.meshes.new("mesh")
     ob = bpy.data.objects.new(name, mesh)
     ob.location = bpy.context.scene.cursor_location
@@ -248,6 +342,30 @@ def create_mesh(name, vertex_data, face_data):
 
 
 def create_animated_surface(name, foout_data, smoothing_function, smoothing_amount):
+    """Creates a new mesh object animated using shapekeys.
+
+    Creates a new mesh in the active Blender environment. For every entry in 'vertex_data'  a vertex is created at the
+    specified coordinates. Faces are created according to the face mapping in 'face_data'.
+    Additionaly the development of the surface is animated using shapekeys and the data of the steps parsed from the
+    foout.dat file.
+
+    Parameters
+    ----------
+    name : string
+        The name of the mesh object to be created.
+    foout_data : [[vertexes], ...], (i, j, k)
+        List of lists of all vertex infos for steps in the foout.dat and the dimensions of each step.
+    smoothing_function : f(x)
+        The function used to calculate the keyframe values for the shapekeys. Should return 0 at f(-1) and f(1) and 1 at
+        f(0).
+    smoothing_factor : int
+        Determines the amount by which shapekeys are blended together. 0 = no smoothing.
+
+    Returns
+    -------
+    ob : Blender.object
+        Handle for the created mesh.
+    """
     ob = create_mesh(name, foout_data[0][0], calc_face_mapping(foout_data[1][0], foout_data[1][1]))
 
     # Add Basis key
@@ -263,6 +381,7 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
             pt[0] = da[0][k][i][0]
             pt[1] = da[0][k][i][1]
             pt[2] = da[0][k][i][2]
+    return ob
 
 
 def lin(x):
@@ -319,8 +438,11 @@ def current_milli_time():
     return int(round(time.time() * 1000))
 # ----------------------
 
-
+# this will parse a foout.dat file and create an animated mesh from it when executed within a Blender environment
 t0 = current_milli_time()
+
+path_state = "<insert path here>"
+path_foout = "<insert path here>"
 da = parse_foout(path_foout)
 
 create_animated_surface("surface_quad_0", da, lin, 0)
