@@ -309,9 +309,12 @@ def insert_shapekey_keyframes(key, k, smoothing_function, smoothing_amount):
     for i, s in enumerate(steps):
 
         # todo: account for distance between frames (nfoout * dt * (lpp / u0) * 24)
+        # temporary hard code
+        adj = nfoout * dt * (lpp / u0) * 24
 
         key.value = smoothing_function(s)
-        key.keyframe_insert("value", frame=k+i)
+        fr = k+(i*adj)
+        key.keyframe_insert("value", frame=fr)
 
 
 def create_mesh(name, vertex_data, face_data):
@@ -465,7 +468,7 @@ dt = 0.00330313015
 
 da = parse_foout(path_foout)
 
-create_animated_surface("surface_quad_0", da, lin, 0)
+create_animated_surface("surface_quad_0", da, lin, 2)
 
 t1 = current_milli_time()
 
