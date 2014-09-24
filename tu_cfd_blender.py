@@ -307,6 +307,9 @@ def insert_shapekey_keyframes(key, k, smoothing_function, smoothing_amount):
     """
     steps = calc_steps(-1, 1, 3+(smoothing_amount*2))
     for i, s in enumerate(steps):
+
+        # todo: account for distance between frames (nfoout * dt * (lpp / u0) * 24)
+
         key.value = smoothing_function(s)
         key.keyframe_insert("value", frame=k+i)
 
@@ -374,7 +377,11 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
     # Add a shape key for every step in foout
     for k, foout_step in enumerate(da[0]):
         key = ob.shape_key_add("key_t" + str(k), from_mix=False)
-        insert_shapekey_keyframes(key, k, smoothing_function, smoothing_amount)
+
+        # calculate correct frame for k
+        frame = k * nfoout * dt * (lpp / u0) * 24
+
+        insert_shapekey_keyframes(key, frame, smoothing_function, smoothing_amount)
 
         for i in range(len(key.data)):
             pt = key.data[i].co
@@ -441,8 +448,21 @@ def current_milli_time():
 # this will parse a foout.dat file and create an animated mesh from it when executed within a Blender environment
 t0 = current_milli_time()
 
-path_state = "<insert path here>"
-path_foout = "<insert path here>"
+path_state = "d:/blender kram/uhareksches ding/state_square.dat"
+path_foout = "d:/blender kram/uhareksches ding/foout_rect.dat"
+
+# length between perpendiculars (laenge zwischen den loten)
+lpp = 6.0702
+
+# reference speed
+u0 = 2.005
+
+# writing steps of foout
+nfoout = 100
+
+# non-dimensional timestep
+dt = 0.00330313015
+
 da = parse_foout(path_foout)
 
 create_animated_surface("surface_quad_0", da, lin, 0)
