@@ -59,9 +59,9 @@ def parse_state(path):
         else:
             assert len(l) == 6
             # extend list with floats
-            dat[i/5].extend(map(float, l))
+            dat[int(i/5)].extend(map(float, l))
 
-    return dat
+    return StateDat(dat)
 
 
 class StateDat:
@@ -86,6 +86,7 @@ class StateDat:
             Any structure an nd-array can be initialized with, containing the data in the predefined order.
         """
         self.data = np.array(dat)
+        self.length = len(self.data)
 
     def get_step(self, step):
         """Returns the data of a specific step.
@@ -193,7 +194,7 @@ def parse_foout(path):
         for i in range(dims[0]*dims[1]):
             l = list(map(float, clean_line(lines[i]).split(' ')))
             # z coordinates are inverted
-            data[step].append((l[0], l[1], -l[2]))
+            data[step].append((l[0]*lpp, l[1]*lpp, -l[2]*lpp))
         del lines[:dims[0]*dims[1]]
         step += 1
 
@@ -347,7 +348,7 @@ def create_mesh(name, vertex_data, face_data):
     return ob
 
 
-def create_animated_surface(name, foout_data, smoothing_function, smoothing_amount):
+def create_animated_surface(name, foout_data, smoothing_function, smoothing_amount, state_data):
     """Creates a new mesh object animated using shapekeys.
 
     Creates a new mesh in the active Blender environment. For every entry in 'vertex_data'  a vertex is created at the
@@ -373,6 +374,28 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
         Handle for the created mesh.
     """
     ob = create_mesh(name, foout_data[0][0], calc_face_mapping(foout_data[1][0], foout_data[1][1]))
+    ob.rotation_mode = 'ZYX'
+    bpy.context.scene.objects.active = ob
+    bpy.ops.object.shade_smooth()
+
+
+    # import ship from .stl file
+    bpy.ops.import_mesh.stl(filepath=path_ship)
+
+    # todo: make this dynamic.
+    ship = bpy.context.scene.objects['KCSship duplex 6']
+    ship.rotation_mode = 'ZYX'
+
+    # create new camera
+    # create object, obdata and link
+    cam = bpy.data.cameras.new("Cam")
+    cam_obj = bpy.data.objects.new("Cam", cam)
+    bpy.context.scene.objects.link(cam_obj)
+    bpy.context.scene.camera = cam_obj
+    # position object
+    cam_obj.location = (0, -3*lpp, 2*lpp)
+    # rotate camera to look towards origin
+    cam_obj.rotation_euler = ((50 / 180*np.pi), 0, 0)
 
     # Add Basis key
     ob.shape_key_add(from_mix=False)
@@ -391,6 +414,34 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
             pt[0] = da[0][k][i][0]
             pt[1] = da[0][k][i][1]
             pt[2] = da[0][k][i][2]
+
+    for i in range(state_data.length):
+        loc_x = state_data.get_step_var(i, 'xor') * lpp
+        loc_y = state_data.get_step_var(i, 'yor') * lpp
+        loc_z = state_data.get_step_var(i, 'zor') * lpp
+        rot_phi = state_data.get_step_var(i, 'ang1')  # * 180/np.pi
+        rot_theta = state_data.get_step_var(i, 'ang2')  # * 180/np.pi
+        rot_psi = state_data.get_step_var(i, 'ang3')  # * 180/np.pi
+
+        time = state_data.get_step_var(i, 't') * dt * lpp / u0
+        cam_x = time * uschleppwagen + state_data.get_step_var(0, 'xor') * lpp
+
+        cam_obj.location = (cam_x, -3*lpp, 2*lpp)
+
+        frame = i * dt * (lpp / u0) * 24
+        ob.location = (loc_x, loc_y, loc_z)
+        ob.rotation_euler = (rot_phi, rot_theta, rot_psi)
+        ship.location = (loc_x, loc_y, loc_z)
+        ship.rotation_euler = (rot_phi, rot_theta, rot_psi)
+        #set keyframes for animation
+        ob.keyframe_insert(data_path="location", frame=frame)
+        ob.keyframe_insert(data_path="rotation_euler", frame=frame)
+
+        ship.keyframe_insert(data_path="location", frame=frame)
+        ship.keyframe_insert(data_path="rotation_euler", frame=frame)
+
+        cam_obj.keyframe_insert(data_path="location", frame=frame, index=0)
+
     return ob
 
 
@@ -453,12 +504,16 @@ t0 = current_milli_time()
 
 path_state = "d:/blender kram/uhareksches ding/state_square.dat"
 path_foout = "d:/blender kram/uhareksches ding/foout_rect.dat"
+path_ship = "d:/blender kram/uhareksches ding/KCSship duplex 6.stl"
 
 # length between perpendiculars (laenge zwischen den loten)
 lpp = 6.0702
 
 # reference speed
 u0 = 2.005
+
+# carriage speed
+uschleppwagen = 0.932170 * u0
 
 # writing steps of foout
 nfoout = 100
@@ -467,8 +522,9 @@ nfoout = 100
 dt = 0.00330313015
 
 da = parse_foout(path_foout)
+state = parse_state(path_state)
 
-create_animated_surface("surface_quad_0", da, lin, 2)
+create_animated_surface("surface_lin_0", da, lin, 0, state)
 
 t1 = current_milli_time()
 
