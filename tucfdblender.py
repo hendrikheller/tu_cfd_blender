@@ -1,9 +1,115 @@
 __author__ = 'Hendrik Heller'
 
+bl_info = {"name": "Tu CFD Import",
+           "category": "Import-Export"}
+
 import os
 import time
 import numpy as np
 import bpy
+
+
+class CfdImportPanel(bpy.types.Panel):
+    """The UI Panel"""    # blender will use this as a tooltip for menu items and buttons.
+    bl_idname = "scene.cfdimportpanel"      # unique identifier for buttons and menu items to reference.
+    bl_label = "Import CFD Data"       # display name in the interface.
+    #bl_options = {'REGISTER', 'UNDO'}  # enable undo for the operator.
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "scene"
+
+    def draw(self, context):
+        layout = self.layout
+        #scene = context.scene
+
+        # Variablen
+        layout.label(text=" Length between perpendiculars:")
+        row = layout.row()
+        row.prop(context.scene, "lpp")
+
+        layout.label(text=" Reference speed:")
+        row = layout.row()
+        row.prop(context.scene, "u0")
+
+        layout.label(text=" Carriage speed:")
+        row = layout.row()
+        row.prop(context.scene, "ucarriage")
+
+        layout.label(text=" Writing steps of foout:")
+        row = layout.row()
+        row.prop(context.scene, "nfoout")
+
+        layout.label(text=" Non-dimensional timestep:")
+        row = layout.row()
+        row.prop(context.scene, "dt")
+
+        layout.label(text=" Filepaths:")
+        row = layout.row()
+        row.prop(context.scene, "path_state")
+        row = layout.row()
+        row.prop(context.scene, "path_foout")
+        row = layout.row()
+        row.prop(context.scene, "path_ship")
+
+        row = layout.row()
+        row.operator("scene.cfdimportoperator")
+
+
+class CfdImportOperator(bpy.types.Operator):
+    """Operator for Importing of CFD data"""      # blender will use this as a tooltip for menu items and buttons.
+    bl_idname = "scene.cfdimportoperator"        # unique identifier for buttons and menu items to reference.
+    bl_label = "Import CFD Data"         # display name in the interface.
+    bl_options = {'REGISTER', 'UNDO'}  # enable undo for the operator.
+
+    def execute(self, context):        # execute() is called by blender when running the operator.
+
+        lpp = bpy.context.scene.lpp
+        u0 = bpy.context.scene.u0
+        ucarriage = bpy.context.scene.ucarriage
+        nfoout = bpy.context.scene.nfoout
+        dt = bpy.context.scene.dt
+
+        adj = nfoout * dt * (lpp / u0) * 24
+
+        state = parse_state(bpy.context.scene.path_state)
+        da = parse_foout(bpy.context.scene.path_foout, lpp)
+
+        create_animated_surface("surface_lin_0", da, lin, 0, state, adj, bpy.context.scene.path_ship, lpp, nfoout, dt, u0, ucarriage)
+
+        return {'FINISHED'}            # this lets blender know the operator finished successfully.
+
+
+def register():
+    bpy.utils.register_class(CfdImportPanel)
+    bpy.utils.register_class(CfdImportOperator)
+    bpy.types.Scene.lpp = bpy.props.FloatProperty(name="lpp", description="Length between perpendiculars of the model.",
+                                                  precision=4, default=6.0702)
+    bpy.types.Scene.u0 = bpy.props.FloatProperty(name="u0", description="Reference speed of the model.", precision=4,
+                                                 default=2.005)
+    bpy.types.Scene.ucarriage = bpy.props.FloatProperty(name="ucarriage", description="Carriage speed.", precision=8,
+                                                        default=1.86900085)
+    bpy.types.Scene.nfoout = bpy.props.IntProperty(name="nfoout", description="Writing steps of foout.", default=100)
+    bpy.types.Scene.dt = bpy.props.FloatProperty(name="dt", description="Non-dimensional timestep.", precision=11,
+                                                 default=0.00330313015)
+    bpy.types.Scene.path_state = bpy.props.StringProperty(name="state.dat", default="", description="Define path to the state.dat file.", subtype='FILE_PATH')
+    bpy.types.Scene.path_foout = bpy.props.StringProperty(name="foout.tec", default="", description="Define path to the foout.tec file.", subtype='FILE_PATH')
+    bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship.stl", default="", description="Define path to the foout.tec file.", subtype='FILE_PATH')
+
+
+def unregister():
+    del bpy.types.Scene.lpp
+    del bpy.types.Scene.u0
+    del bpy.types.Scene.ucarriage
+    del bpy.types.Scene.nfoout
+    del bpy.types.Scene.dt
+    del bpy.types.Scene.path_state
+    del bpy.types.Scene.path_foout
+    del bpy.types.Scene.path_ship
+    bpy.utils.unregister_class(CfdImportPanel)
+    bpy.utils.unregister_class(CfdImportOperator)
+
+if __name__ == "__main__":
+    register()
 
 
 def clean_line(s):
@@ -155,7 +261,7 @@ class StateDat:
             raise Exception("Var could not be matched.")
 
 
-def parse_foout(path):
+def parse_foout(path, lpp):
     """Parse a foout.dat file.
 
     <long description goes here>
@@ -287,7 +393,7 @@ def calc_steps(start, stop, amount):
     return ret
 
 
-def insert_shapekey_keyframes(key, k, smoothing_function, smoothing_amount):
+def insert_shapekey_keyframes(key, k, smoothing_function, smoothing_amount, adj):
     """Creates keyframes for shapekeys
 
     <long description>
@@ -309,9 +415,8 @@ def insert_shapekey_keyframes(key, k, smoothing_function, smoothing_amount):
     steps = calc_steps(-1, 1, 3+(smoothing_amount*2))
     for i, s in enumerate(steps):
 
-        # todo: account for distance between frames (nfoout * dt * (lpp / u0) * 24)
         # temporary hard code
-        adj = nfoout * dt * (lpp / u0) * 24
+        #adj = nfoout * dt * (lpp / u0) * 24
 
         key.value = smoothing_function(s)
         fr = k+(i*adj)
@@ -348,7 +453,8 @@ def create_mesh(name, vertex_data, face_data):
     return ob
 
 
-def create_animated_surface(name, foout_data, smoothing_function, smoothing_amount, state_data):
+def create_animated_surface(name, foout_data, smoothing_function, smoothing_amount, state_data, adj, path_ship,
+                            lpp, nfoout, dt, u0, uschleppwagen):
     """Creates a new mesh object animated using shapekeys.
 
     Creates a new mesh in the active Blender environment. For every entry in 'vertex_data'  a vertex is created at the
@@ -401,19 +507,19 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
     ob.shape_key_add(from_mix=False)
 
     # Add a shape key for every step in foout
-    for k, foout_step in enumerate(da[0]):
+    for k, foout_step in enumerate(foout_data[0]):
         key = ob.shape_key_add("key_t" + str(k), from_mix=False)
 
         # calculate correct frame for k
         frame = k * nfoout * dt * (lpp / u0) * 24
 
-        insert_shapekey_keyframes(key, frame, smoothing_function, smoothing_amount)
+        insert_shapekey_keyframes(key, frame, smoothing_function, smoothing_amount, adj)
 
         for i in range(len(key.data)):
             pt = key.data[i].co
-            pt[0] = da[0][k][i][0]
-            pt[1] = da[0][k][i][1]
-            pt[2] = da[0][k][i][2]
+            pt[0] = foout_data[0][k][i][0]
+            pt[1] = foout_data[0][k][i][1]
+            pt[2] = foout_data[0][k][i][2]
 
     for i in range(state_data.length):
         loc_x = state_data.get_step_var(i, 'xor') * lpp
@@ -529,99 +635,3 @@ def current_milli_time():
 #t1 = current_milli_time()
 
 #print ("runtime in millis: " + str(t1-t0))
-
-
-# BLENDER ADDON BEGINS HERE -------------------------------------------------------------------------
-class CfdImport(bpy.types.Operator):
-    """The complete import magic"""    # blender will use this as a tooltip for menu items and buttons.
-    bl_idname = "scene.cfdimport"      # unique identifier for buttons and menu items to reference.
-    bl_label = "Import CFD Data"       # display name in the interface.
-    bl_options = {'REGISTER', 'UNDO'}  # enable undo for the operator.
-
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-
-        # Variablen
-        layout.label(text=" Length between perpendiculars:")
-        row = layout.row()
-        row.prop(context.scene, "lpp")
-
-        layout.label(text=" Reference speed:")
-        row = layout.row()
-        row.prop(context.scene, "u0")
-
-        layout.label(text=" Carriage speed:")
-        row = layout.row()
-        row.prop(context.scene, "ucarriage")
-
-        layout.label(text=" Writing steps of foout:")
-        row = layout.row()
-        row.prop(context.scene, "nfoout")
-
-        layout.label(text=" Non-dimensional timestep:")
-        row = layout.row()
-        row.prop(context.scene, "dt")
-
-        layout.label(text=" Filepaths:")
-        row = layout.row()
-        row.prop(context.scene, "path_state")
-        row = layout.row()
-        row.prop(context.scene, "path_foout")
-        row = layout.row()
-        row.prop(context.scene, "path_ship")
-
-        # --------------------------------------------------------------------------------------------
-
-        # Big render button
-        layout.label(text="Big Button:")
-        row = layout.row()
-        row.scale_y = 3.0
-        row.operator("scene.cfdimport")
-
-    def execute(self, context):        # execute() is called by blender when running the operator.
-
-        lpp = bpy.types.Scene.lpp
-        u0 = bpy.types.Scene.u0
-        ucarriage = bpy.types.Scene.ucarriage
-        nfoout = bpy.types.Scene.nfoout
-        dt = bpy.types.Scene.dt
-
-        state = parse_state(bpy.types.Scene.path_state)
-        da = parse_foout(bpy.types.Scene.path_foout)
-
-        create_animated_surface("surface_lin_0", da, lin, 0, state)
-
-        return {'FINISHED'}            # this lets blender know the operator finished successfully.
-
-
-def register():
-    bpy.utils.register_class(CfdImport)
-    bpy.types.Scene.lpp = bpy.props.FloatProperty(name="lpp", description="Length between perpendiculars of the model.",
-                                                  precision=4, default=6.0702)
-    bpy.types.Scene.u0 = bpy.props.FloatProperty(name="u0", description="Reference speed of the model.", precision=4,
-                                                 default=2.005)
-    bpy.types.Scene.ucarriage = bpy.props.FloatProperty(name="ucarriage", description="Carriage speed.", precision=8,
-                                                        default=1.86900085)
-    bpy.types.Scene.nfoout = bpy.props.IntProperty(name="nfoout", description="Writing steps of foout.", default=100)
-    bpy.types.Scene.dt = bpy.props.FloatProperty(name="dt", description="Non-dimensional timestep.", precision=11,
-                                                 default=0.00330313015)
-    bpy.types.Scene.path_state = bpy.props.StringProperty(name="state.dat", default="", description="Define path to the state.dat file.", subtype='FILE_PATH')
-    bpy.types.Scene.path_foout = bpy.props.StringProperty(name="foout.tec", default="", description="Define path to the foout.tec file.", subtype='FILE_PATH')
-    bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship.stl", default="", description="Define path to the foout.tec file.", subtype='FILE_PATH')
-
-
-def unregister():
-    bpy.utils.unregister_class(CfdImport)
-    del bpy.types.Scene.lpp
-    del bpy.types.Scene.u0
-    del bpy.types.Scene.ucarriage
-    del bpy.types.Scene.nfoout
-    del bpy.types.Scene.dt
-    del bpy.types.Scene.path_state
-    del bpy.types.Scene.path_foout
-    del bpy.types.Scene.path_ship
-    bpy.utils.unregister_class(CfdImport)
-
-if __name__ == "__main__":
-    register()
