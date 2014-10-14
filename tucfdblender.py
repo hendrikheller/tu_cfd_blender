@@ -500,32 +500,128 @@ def current_milli_time():
 # ----------------------
 
 # this will parse a foout.dat file and create an animated mesh from it when executed within a Blender environment
-t0 = current_milli_time()
+#t0 = current_milli_time()
 
-path_state = "d:/blender kram/uhareksches ding/state_square.dat"
-path_foout = "d:/blender kram/uhareksches ding/foout_rect.dat"
-path_ship = "d:/blender kram/uhareksches ding/KCSship duplex 6.stl"
+#path_state = "d:/blender kram/uhareksches ding/state_square.dat"
+#path_foout = "d:/blender kram/uhareksches ding/foout_rect.dat"
+#path_ship = "d:/blender kram/uhareksches ding/KCSship duplex 6.stl"
 
 # length between perpendiculars (laenge zwischen den loten)
-lpp = 6.0702
+#lpp = 6.0702
 
 # reference speed
-u0 = 2.005
+#u0 = 2.005
 
 # carriage speed
-uschleppwagen = 0.932170 * u0
+#uschleppwagen = 0.932170 * u0
 
 # writing steps of foout
-nfoout = 100
+#nfoout = 100
 
 # non-dimensional timestep
-dt = 0.00330313015
+#dt = 0.00330313015
 
-da = parse_foout(path_foout)
-state = parse_state(path_state)
+#da = parse_foout(path_foout)
+#state = parse_state(path_state)
 
-create_animated_surface("surface_lin_0", da, lin, 0, state)
+#create_animated_surface("surface_lin_0", da, lin, 0, state)
 
-t1 = current_milli_time()
+#t1 = current_milli_time()
 
-print ("runtime in millis: " + str(t1-t0))
+#print ("runtime in millis: " + str(t1-t0))
+
+
+# BLENDER ADDON BEGINS HERE -------------------------------------------------------------------------
+class CfdImport(bpy.types.Operator):
+    """The complete import magic"""    # blender will use this as a tooltip for menu items and buttons.
+    bl_idname = "scene.cfdimport"      # unique identifier for buttons and menu items to reference.
+    bl_label = "Import CFD Data"       # display name in the interface.
+    bl_options = {'REGISTER', 'UNDO'}  # enable undo for the operator.
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+
+        # Variablen
+        layout.label(text=" Length between perpendiculars:")
+        row = layout.row()
+        row.prop(context.scene, "lpp")
+
+        layout.label(text=" Reference speed:")
+        row = layout.row()
+        row.prop(context.scene, "u0")
+
+        layout.label(text=" Carriage speed:")
+        row = layout.row()
+        row.prop(context.scene, "ucarriage")
+
+        layout.label(text=" Writing steps of foout:")
+        row = layout.row()
+        row.prop(context.scene, "nfoout")
+
+        layout.label(text=" Non-dimensional timestep:")
+        row = layout.row()
+        row.prop(context.scene, "dt")
+
+        layout.label(text=" Filepaths:")
+        row = layout.row()
+        row.prop(context.scene, "path_state")
+        row = layout.row()
+        row.prop(context.scene, "path_foout")
+        row = layout.row()
+        row.prop(context.scene, "path_ship")
+
+        # --------------------------------------------------------------------------------------------
+
+        # Big render button
+        layout.label(text="Big Button:")
+        row = layout.row()
+        row.scale_y = 3.0
+        row.operator("scene.cfdimport")
+
+    def execute(self, context):        # execute() is called by blender when running the operator.
+
+        lpp = bpy.types.Scene.lpp
+        u0 = bpy.types.Scene.u0
+        ucarriage = bpy.types.Scene.ucarriage
+        nfoout = bpy.types.Scene.nfoout
+        dt = bpy.types.Scene.dt
+
+        state = parse_state(bpy.types.Scene.path_state)
+        da = parse_foout(bpy.types.Scene.path_foout)
+
+        create_animated_surface("surface_lin_0", da, lin, 0, state)
+
+        return {'FINISHED'}            # this lets blender know the operator finished successfully.
+
+
+def register():
+    bpy.utils.register_class(CfdImport)
+    bpy.types.Scene.lpp = bpy.props.FloatProperty(name="lpp", description="Length between perpendiculars of the model.",
+                                                  precision=4, default=6.0702)
+    bpy.types.Scene.u0 = bpy.props.FloatProperty(name="u0", description="Reference speed of the model.", precision=4,
+                                                 default=2.005)
+    bpy.types.Scene.ucarriage = bpy.props.FloatProperty(name="ucarriage", description="Carriage speed.", precision=8,
+                                                        default=1.86900085)
+    bpy.types.Scene.nfoout = bpy.props.IntProperty(name="nfoout", description="Writing steps of foout.", default=100)
+    bpy.types.Scene.dt = bpy.props.FloatProperty(name="dt", description="Non-dimensional timestep.", precision=11,
+                                                 default=0.00330313015)
+    bpy.types.Scene.path_state = bpy.props.StringProperty(name="state.dat", default="", description="Define path to the state.dat file.", subtype='FILE_PATH')
+    bpy.types.Scene.path_foout = bpy.props.StringProperty(name="foout.tec", default="", description="Define path to the foout.tec file.", subtype='FILE_PATH')
+    bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship.stl", default="", description="Define path to the foout.tec file.", subtype='FILE_PATH')
+
+
+def unregister():
+    bpy.utils.unregister_class(CfdImport)
+    del bpy.types.Scene.lpp
+    del bpy.types.Scene.u0
+    del bpy.types.Scene.ucarriage
+    del bpy.types.Scene.nfoout
+    del bpy.types.Scene.dt
+    del bpy.types.Scene.path_state
+    del bpy.types.Scene.path_foout
+    del bpy.types.Scene.path_ship
+    bpy.utils.unregister_class(CfdImport)
+
+if __name__ == "__main__":
+    register()
