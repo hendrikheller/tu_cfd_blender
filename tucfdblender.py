@@ -488,8 +488,8 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
     # import ship from .stl file
     bpy.ops.import_mesh.stl(filepath=path_ship)
 
-    # todo: make this dynamic.
-    ship = bpy.context.scene.objects['KCSship duplex 6']
+    # this could lead to problems on platforms other than windows! todo: test on linux and macos
+    ship = bpy.context.scene.objects[path_ship.split('\\')[-1].split('.')[0]]
     ship.rotation_mode = 'ZYX'
 
     # create new camera
@@ -529,8 +529,8 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
         rot_theta = state_data.get_step_var(i, 'ang2')  # * 180/np.pi
         rot_psi = state_data.get_step_var(i, 'ang3')  # * 180/np.pi
 
-        time = state_data.get_step_var(i, 't') * dt * lpp / u0
-        cam_x = time * uschleppwagen + state_data.get_step_var(0, 'xor') * lpp
+        cur_time = state_data.get_step_var(i, 't') * dt * lpp / u0
+        cam_x = cur_time * uschleppwagen + state_data.get_step_var(0, 'xor') * lpp
 
         cam_obj.location = (cam_x, -3*lpp, 2*lpp)
 
@@ -603,35 +603,3 @@ def only_single_spaces(s):
 
 def current_milli_time():
     return int(round(time.time() * 1000))
-# ----------------------
-
-# this will parse a foout.dat file and create an animated mesh from it when executed within a Blender environment
-#t0 = current_milli_time()
-
-#path_state = "d:/blender kram/uhareksches ding/state_square.dat"
-#path_foout = "d:/blender kram/uhareksches ding/foout_rect.dat"
-#path_ship = "d:/blender kram/uhareksches ding/KCSship duplex 6.stl"
-
-# length between perpendiculars (laenge zwischen den loten)
-#lpp = 6.0702
-
-# reference speed
-#u0 = 2.005
-
-# carriage speed
-#uschleppwagen = 0.932170 * u0
-
-# writing steps of foout
-#nfoout = 100
-
-# non-dimensional timestep
-#dt = 0.00330313015
-
-#da = parse_foout(path_foout)
-#state = parse_state(path_state)
-
-#create_animated_surface("surface_lin_0", da, lin, 0, state)
-
-#t1 = current_milli_time()
-
-#print ("runtime in millis: " + str(t1-t0))
