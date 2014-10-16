@@ -484,12 +484,10 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
     bpy.context.scene.objects.active = ob
     bpy.ops.object.shade_smooth()
 
-
     # import ship from .stl file
     bpy.ops.import_mesh.stl(filepath=path_ship)
 
-    # this could lead to problems on platforms other than windows! todo: test on linux and macos
-    ship = bpy.context.scene.objects[path_ship.split('\\')[-1].split('.')[0]]
+    ship = bpy.context.scene.objects[path_ship.split(os.path.sep)[-1].split('.')[0]]
     ship.rotation_mode = 'ZYX'
 
     # create new camera
