@@ -527,11 +527,6 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
         rot_theta = state_data.get_step_var(i, 'ang2')  # * 180/np.pi
         rot_psi = state_data.get_step_var(i, 'ang3')  # * 180/np.pi
 
-        cur_time = state_data.get_step_var(i, 't') * dt * lpp / u0
-        cam_x = cur_time * uschleppwagen + state_data.get_step_var(0, 'xor') * lpp
-
-        cam_obj.location = (cam_x, -3*lpp, 2*lpp)
-
         frame = i * dt * (lpp / u0) * 24
         ob.location = (loc_x, loc_y, loc_z)
         ob.rotation_euler = (rot_phi, rot_theta, rot_psi)
@@ -544,7 +539,17 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
         ship.keyframe_insert(data_path="location", frame=frame)
         ship.keyframe_insert(data_path="rotation_euler", frame=frame)
 
-        cam_obj.keyframe_insert(data_path="location", frame=frame, index=0)
+    frame = 0 * dt * (lpp / u0) * 24
+    cur_time = state_data.get_step_var(0, 't') * dt * lpp / u0
+    cam_x = cur_time * uschleppwagen + state_data.get_step_var(0, 'xor') * lpp
+    cam_obj.location = (cam_x, -3*lpp, 2*lpp)
+    cam_obj.keyframe_insert(data_path="location", frame=frame, index=0)
+
+    frame = state_data.length-1 * dt * (lpp / u0) * 24
+    cur_time = state_data.get_step_var(state_data.length-1, 't') * dt * lpp / u0
+    cam_x = cur_time * uschleppwagen + state_data.get_step_var(0, 'xor') * lpp
+    cam_obj.location = (cam_x, -3*lpp, 2*lpp)
+    cam_obj.keyframe_insert(data_path="location", frame=frame, index=0)
 
     return ob
 
