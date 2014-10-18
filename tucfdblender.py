@@ -72,9 +72,12 @@ class CfdImportOperator(bpy.types.Operator):
         adj = nfoout * dt * (lpp / u0) * 24
 
         state = parse_state(bpy.context.scene.path_state)
-        da = parse_foout(bpy.context.scene.path_foout, lpp)
+        foout = parse_foout(bpy.context.scene.path_foout, lpp)
 
-        create_animated_surface("surface_lin_0", da, lin, 0, state, adj, bpy.context.scene.path_ship, lpp, nfoout, dt, u0, ucarriage)
+        create_animated_surface("surface_lin_0", foout, lin, 0, state, adj, bpy.context.scene.path_ship, lpp, nfoout, dt, u0, ucarriage)
+
+        bpy.context.scene.frame_start = 0
+        bpy.context.scene.frame_end = state.length * dt * (lpp / u0) * 24
 
         return {'FINISHED'}            # this lets blender know the operator finished successfully.
 
@@ -91,9 +94,9 @@ def register():
     bpy.types.Scene.nfoout = bpy.props.IntProperty(name="nfoout", description="Writing steps of foout.", default=100)
     bpy.types.Scene.dt = bpy.props.FloatProperty(name="dt", description="Non-dimensional timestep.", precision=11,
                                                  default=0.00330313015)
-    bpy.types.Scene.path_state = bpy.props.StringProperty(name="state.dat", default="", description="Define path to the state.dat file.", subtype='FILE_PATH')
-    bpy.types.Scene.path_foout = bpy.props.StringProperty(name="foout.tec", default="", description="Define path to the foout.tec file.", subtype='FILE_PATH')
-    bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship.stl", default="", description="Define path to the foout.tec file.", subtype='FILE_PATH')
+    bpy.types.Scene.path_state = bpy.props.StringProperty(name="state.dat", default=os.path.normpath("d:/blender kram/uhareksches ding/state_square.dat"), description="Define path to the state.dat file.", subtype='FILE_PATH')
+    bpy.types.Scene.path_foout = bpy.props.StringProperty(name="foout.tec", default=os.path.normpath('d:/blender kram/uhareksches ding/foout_rect.dat'), description="Define path to the foout.tec file.", subtype='FILE_PATH')
+    bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship.stl", default=os.path.normpath('d:/blender kram/uhareksches ding/KCSship duplex 6.stl'), description="Define path to the foout.tec file.", subtype='FILE_PATH')
 
 
 def unregister():
@@ -476,12 +479,13 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
 
     Returns
     -------
-    ob : Blender.object
+    surface : Blender.object
         Handle for the created mesh.
     """
-    ob = create_mesh(name, foout_data[0][0], calc_face_mapping(foout_data[1][0], foout_data[1][1]))
-    ob.rotation_mode = 'ZYX'
-    bpy.context.scene.objects.active = ob
+    surface = create_mesh(name, foout_data[0][0], calc_face_mapping(foout_data[1][0], foout_data[1][1]))
+    #bpy.ops.shade_smooth(surface)
+    surface.rotation_mode = 'ZYX'
+    bpy.context.scene.objects.active = surface
     bpy.ops.object.shade_smooth()
 
     # import ship from .stl file
@@ -490,28 +494,31 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
     ship = bpy.context.scene.objects[path_ship.split(os.path.sep)[-1].split('.')[0]]
     ship.rotation_mode = 'ZYX'
 
-    # create new camera
-    # create object, obdata and link
-    cam = bpy.data.cameras.new("Cam")
-    cam_obj = bpy.data.objects.new("Cam", cam)
-    bpy.context.scene.objects.link(cam_obj)
-    bpy.context.scene.camera = cam_obj
+    # create new camera if active scene has no camera attached
+    if bpy.context.scene.camera is None:
+        cam = bpy.data.cameras.new("Cam")
+        cam_obj = bpy.data.objects.new("Cam", cam)
+        bpy.context.scene.objects.link(cam_obj)
+        bpy.context.scene.camera = cam_obj
+    else:
+        cam_obj = bpy.context.scene.camera
     # position object
     cam_obj.location = (0, -3*lpp, 2*lpp)
     # rotate camera to look towards origin
     cam_obj.rotation_euler = ((50 / 180*np.pi), 0, 0)
 
     # Add Basis key
-    ob.shape_key_add(from_mix=False)
+    surface.shape_key_add(from_mix=False)
 
     # Add a shape key for every step in foout
     for k, foout_step in enumerate(foout_data[0]):
-        key = ob.shape_key_add("key_t" + str(k), from_mix=False)
+        key = surface.shape_key_add("key_t" + str(k), from_mix=False)
 
         # calculate correct frame for k
         frame = k * nfoout * dt * (lpp / u0) * 24
 
         insert_shapekey_keyframes(key, frame, smoothing_function, smoothing_amount, adj)
+        # todo: find a way to make the interpolation of the shape keys linear
 
         for i in range(len(key.data)):
             pt = key.data[i].co
@@ -523,35 +530,32 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
         loc_x = state_data.get_step_var(i, 'xor') * lpp
         loc_y = state_data.get_step_var(i, 'yor') * lpp
         loc_z = state_data.get_step_var(i, 'zor') * lpp
-        rot_phi = state_data.get_step_var(i, 'ang1')  # * 180/np.pi
-        rot_theta = state_data.get_step_var(i, 'ang2')  # * 180/np.pi
-        rot_psi = state_data.get_step_var(i, 'ang3')  # * 180/np.pi
+        rot_phi = state_data.get_step_var(i, 'ang1')
+        rot_theta = state_data.get_step_var(i, 'ang2')
+        rot_psi = state_data.get_step_var(i, 'ang3')
+
+        cur_time = state_data.get_step_var(i, 't') * dt * lpp / u0
+        cam_x = cur_time * uschleppwagen + state_data.get_step_var(0, 'xor') * lpp
+
+        cam_obj.location = (cam_x, -3*lpp, 2*lpp)
 
         frame = i * dt * (lpp / u0) * 24
-        ob.location = (loc_x, loc_y, loc_z)
-        ob.rotation_euler = (rot_phi, rot_theta, rot_psi)
+        surface.location = (loc_x, loc_y, loc_z)
+        surface.rotation_euler = (rot_phi, rot_theta, rot_psi)
         ship.location = (loc_x, loc_y, loc_z)
         ship.rotation_euler = (rot_phi, rot_theta, rot_psi)
         #set keyframes for animation
-        ob.keyframe_insert(data_path="location", frame=frame)
-        ob.keyframe_insert(data_path="rotation_euler", frame=frame)
+        surface.keyframe_insert(data_path="location", frame=frame)
+        surface.keyframe_insert(data_path="rotation_euler", frame=frame)
 
         ship.keyframe_insert(data_path="location", frame=frame)
         ship.keyframe_insert(data_path="rotation_euler", frame=frame)
 
-    frame = 0 * dt * (lpp / u0) * 24
-    cur_time = state_data.get_step_var(0, 't') * dt * lpp / u0
-    cam_x = cur_time * uschleppwagen + state_data.get_step_var(0, 'xor') * lpp
-    cam_obj.location = (cam_x, -3*lpp, 2*lpp)
-    cam_obj.keyframe_insert(data_path="location", frame=frame, index=0)
+        if i == 0 or i == state_data.length-1:
+            cam_obj.keyframe_insert(data_path="location", frame=frame, index=0)
+            cam_obj.animation_data.action.fcurves[0].keyframe_points[-1].interpolation = 'LINEAR'
 
-    frame = state_data.length-1 * dt * (lpp / u0) * 24
-    cur_time = state_data.get_step_var(state_data.length-1, 't') * dt * lpp / u0
-    cam_x = cur_time * uschleppwagen + state_data.get_step_var(0, 'xor') * lpp
-    cam_obj.location = (cam_x, -3*lpp, 2*lpp)
-    cam_obj.keyframe_insert(data_path="location", frame=frame, index=0)
-
-    return ob
+    return surface
 
 
 def lin(x):
