@@ -63,19 +63,28 @@ class CfdImportOperator(bpy.types.Operator):
 
     def execute(self, context):        # execute() is called by blender when running the operator.
 
-        lpp = bpy.context.scene.lpp
-        u0 = bpy.context.scene.u0
-        ucarriage = bpy.context.scene.ucarriage
-        nfoout = bpy.context.scene.nfoout
-        dt = bpy.context.scene.dt
+        constants = {'lpp': context.scene.lpp,
+                     'u0': context.scene.u0,
+                     'ucarriage': context.scene.ucarriage,
+                     'nfoout': context.scene.nfoout,
+                     'dt': context.scene.dt}
+        constants['adj'] = constants['nfoout'] * constants['dt'] * (constants['lpp'] / constants['u0']) * 24
+
+        lpp = context.scene.lpp
+        u0 = context.scene.u0
+        ucarriage = context.scene.ucarriage
+        nfoout = context.scene.nfoout
+        dt = context.scene.dt
 
         adj = nfoout * dt * (lpp / u0) * 24
 
-        state = parse_state(bpy.context.scene.path_state)
-        foout = parse_foout(bpy.context.scene.path_foout, lpp)
+        state = parse_state(context.scene.path_state)
+        foout = parse_foout(context.scene.path_foout, lpp)
 
-        create_animated_surface("surface_lin_0", foout, lin, 0, state, adj, bpy.context.scene.path_ship, lpp, nfoout, dt, u0, ucarriage)
+        create_animated_surface("surface", foout, lin, 0, state, adj, context.scene.path_ship, lpp, nfoout, dt, u0, ucarriage)
+        adjust_camera_to_animation(state, constants)
 
+        # set start and end frame of animation
         bpy.context.scene.frame_start = 0
         bpy.context.scene.frame_end = state.length * dt * (lpp / u0) * 24
 
@@ -396,7 +405,7 @@ def calc_steps(start, stop, amount):
     return ret
 
 
-def insert_shapekey_keyframes(key, k, smoothing_function, smoothing_amount, adj):
+def insert_shapekey_keyframes(key, k, adj):
     """Creates keyframes for shapekeys
 
     <long description>
@@ -415,13 +424,9 @@ def insert_shapekey_keyframes(key, k, smoothing_function, smoothing_amount, adj)
     ret : [step0, step1, ...]
         A list of equally spaced steps between 'start' and 'stop'.
     """
-    steps = calc_steps(-1, 1, 3+(smoothing_amount*2))
+    steps = calc_steps(-1, 1, 3)
     for i, s in enumerate(steps):
-
-        # temporary hard code
-        #adj = nfoout * dt * (lpp / u0) * 24
-
-        key.value = smoothing_function(s)
+        key.value = lin(s)
         fr = k+(i*adj)
         key.keyframe_insert("value", frame=fr)
 
@@ -456,7 +461,11 @@ def create_mesh(name, vertex_data, face_data):
     return ob
 
 
-def create_animated_surface(name, foout_data, smoothing_function, smoothing_amount, state_data, adj, path_ship,
+def import_mesh(filepath):
+    pass
+
+
+def create_animated_surface(name, foout_data, state_data, constants, adj, path_ship,
                             lpp, nfoout, dt, u0, uschleppwagen):
     """Creates a new mesh object animated using shapekeys.
 
@@ -474,7 +483,7 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
     smoothing_function : f(x)
         The function used to calculate the keyframe values for the shapekeys. Should return 0 at f(-1) and f(1) and 1 at
         f(0).
-    smoothing_factor : int
+    smoothing_amount : int
         Determines the amount by which shapekeys are blended together. 0 = no smoothing.
 
     Returns
@@ -483,10 +492,10 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
         Handle for the created mesh.
     """
     surface = create_mesh(name, foout_data[0][0], calc_face_mapping(foout_data[1][0], foout_data[1][1]))
-    #bpy.ops.shade_smooth(surface)
+
     surface.rotation_mode = 'ZYX'
-    bpy.context.scene.objects.active = surface
-    bpy.ops.object.shade_smooth()
+    # bpy.context.scene.objects.active = surface
+    # bpy.ops.object.shade_smooth()
 
     # import ship from .stl file
     bpy.ops.import_mesh.stl(filepath=path_ship)
@@ -513,11 +522,12 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
     # Add a shape key for every step in foout
     for k, foout_step in enumerate(foout_data[0]):
         key = surface.shape_key_add("key_t" + str(k), from_mix=False)
+        key.interpolation = 'KEY_LINEAR'
 
         # calculate correct frame for k
-        frame = k * nfoout * dt * (lpp / u0) * 24
+        frame = k * constants['adj']
 
-        insert_shapekey_keyframes(key, frame, smoothing_function, smoothing_amount, adj)
+        insert_shapekey_keyframes(key, frame, adj)  # , smoothing_function, smoothing_amount, adj)
         # todo: find a way to make the interpolation of the shape keys linear
 
         for i in range(len(key.data)):
@@ -527,19 +537,19 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
             pt[2] = foout_data[0][k][i][2]
 
     for i in range(state_data.length):
-        loc_x = state_data.get_step_var(i, 'xor') * lpp
-        loc_y = state_data.get_step_var(i, 'yor') * lpp
-        loc_z = state_data.get_step_var(i, 'zor') * lpp
+        loc_x = state_data.get_step_var(i, 'xor') * constants['lpp']
+        loc_y = state_data.get_step_var(i, 'yor') * constants['lpp']
+        loc_z = state_data.get_step_var(i, 'zor') * constants['lpp']
         rot_phi = state_data.get_step_var(i, 'ang1')
         rot_theta = state_data.get_step_var(i, 'ang2')
         rot_psi = state_data.get_step_var(i, 'ang3')
 
-        cur_time = state_data.get_step_var(i, 't') * dt * lpp / u0
-        cam_x = cur_time * uschleppwagen + state_data.get_step_var(0, 'xor') * lpp
+        cur_time = state_data.get_step_var(i, 't') * constants['dt'] * (constants['lpp'] / constants['u0'])
+        cam_x = cur_time * uschleppwagen + state_data.get_step_var(0, 'xor') * constants['lpp']
 
-        cam_obj.location = (cam_x, -3*lpp, 2*lpp)
+        cam_obj.location = (cam_x, -3*constants['lpp'], 2*constants['lpp'])
 
-        frame = i * dt * (lpp / u0) * 24
+        frame = i * constants['dt'] * (constants['lpp'] / constants['u0']) * 24
         surface.location = (loc_x, loc_y, loc_z)
         surface.rotation_euler = (rot_phi, rot_theta, rot_psi)
         ship.location = (loc_x, loc_y, loc_z)
@@ -556,6 +566,31 @@ def create_animated_surface(name, foout_data, smoothing_function, smoothing_amou
             cam_obj.animation_data.action.fcurves[0].keyframe_points[-1].interpolation = 'LINEAR'
 
     return surface
+
+
+def adjust_camera_to_animation(state_data, constants):
+
+    # create new camera if active scene has no camera attached
+    if bpy.context.scene.camera is None:
+        cam = bpy.data.cameras.new("Camera")
+        cam_obj = bpy.data.objects.new("Camera", cam)
+        bpy.context.scene.objects.link(cam_obj)
+        bpy.context.scene.camera = cam_obj
+    else:
+        cam_obj = bpy.context.scene.camera
+
+    # position object
+    cam_obj.location = (0, -3*constants['lpp'], 2*constants['lpp'])
+    # rotate camera to look towards origin
+    cam_obj.rotation_euler = ((50 / 180*np.pi), 0, 0)
+
+    frame = 0 * constants['dt'] * (constants['lpp'] / constants['u0']) * 24
+    cam_obj.keyframe_insert(data_path="location", frame=frame, index=0)
+    cam_obj.animation_data.action.fcurves[0].keyframe_points[-1].interpolation = 'LINEAR'
+
+    frame = state_data.length-1 * constants['dt'] * (constants['lpp'] / constants['u0']) * 24
+    cam_obj.keyframe_insert(data_path="location", frame=frame, index=0)
+    cam_obj.animation_data.action.fcurves[0].keyframe_points[-1].interpolation = 'LINEAR'
 
 
 def lin(x):
