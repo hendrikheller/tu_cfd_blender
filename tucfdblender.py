@@ -20,7 +20,7 @@ class CfdImportPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        # Variablen
+        # constants
         layout.label(text=" Length between perpendiculars:")
         row = layout.row()
         row.prop(context.scene, "lpp")
@@ -68,29 +68,29 @@ class CfdImportOperator(bpy.types.Operator):
                      'dt': context.scene.dt}
         constants['adj'] = constants['nfoout'] * constants['dt'] * (constants['lpp'] / constants['u0']) * 24
 
-        t0 = current_milli_time()
+        #t0 = current_milli_time()
         state = parse_state(context.scene.path_state)
         foout = parse_foout(context.scene.path_foout, constants['lpp'])
         t1 = current_milli_time()
-        print('Parsing finished in ' + str(t1-t0) + ' milliseconds.')
+        #print('Parsing finished in ' + str(t1-t0) + ' milliseconds.')
 
-        t2 = current_milli_time()
+        #t2 = current_milli_time()
         ship = import_mesh(context.scene.path_ship)
         ship.rotation_mode = 'ZYX'
         animate_ship(ship, state, constants)
         t3 = current_milli_time()
-        print('Importing and animation of ship finished in ' + str(t3-t2) + ' milliseconds.')
+        #print('Importing and animation of ship finished in ' + str(t3-t2) + ' milliseconds.')
 
-        t4 = current_milli_time()
+        #t4 = current_milli_time()
         surface = create_surface_with_shapekeys("surface", foout, constants)
         animate_surface(surface, state, constants)
-        t5 = current_milli_time()
-        print('Importing and animation of surface finished in ' + str(t5-t4) + ' milliseconds.')
+        #t5 = current_milli_time()
+        #print('Importing and animation of surface finished in ' + str(t5-t4) + ' milliseconds.')
 
-        t6 = current_milli_time()
+        #t6 = current_milli_time()
         animate_camera(state, constants)
-        t7 = current_milli_time()
-        print('Animation of camera finished in ' + str(t7-t6) + ' milliseconds.')
+        #t7 = current_milli_time()
+        #print('Animation of camera finished in ' + str(t7-t6) + ' milliseconds.')
 
         # set start and end frame of animation
         context.scene.frame_start = 0
@@ -178,11 +178,11 @@ def parse_state(path):
         l = clean_line(l).split(" ")
 
         if i % 5 == 0:
-            assert len(l) == 4
+            #assert len(l) == 4
             # append new list, 1 entry int, 3 entries float
             dat.append([int(l[0]), float(l[1]), float(l[2]), float(l[3])])
         else:
-            assert len(l) == 6
+            #assert len(l) == 6
             # extend list with floats
             dat[int(i/5)].extend(map(float, l))
 
@@ -246,7 +246,7 @@ class StateDat:
         data[:, var] : [values]
             A list of all data points for a specific variable.
         """
-        assert isinstance(var, str)
+        #assert isinstance(var, str)
         var = var.lower()
         if var in self.varmapping:
             return self.data[:, self.varmapping[var]]
@@ -271,8 +271,8 @@ class StateDat:
         data[step, var] : float
             The data point for 'var' at 'timestep'.
         """
-        assert isinstance(var, str)
-        assert isinstance(step, int)
+        #assert isinstance(var, str)
+        #assert isinstance(step, int)
         var = var.lower()
         if var in self.varmapping:
             return self.data[step, self.varmapping[var]]
@@ -375,7 +375,7 @@ def return_digits(s):
     s : string
         A string containing only the digits occuring in the original string.
     """
-    assert isinstance(s, str)
+    #assert isinstance(s, str)
     result = ""
     for c in s:
         if c.isdigit():
@@ -400,13 +400,13 @@ def calc_steps(start, stop, amount):
     ret : [step0, step1, ...]
         A list of equally spaced steps between 'start' and 'stop'.
     """
-    assert isinstance(start, int)
-    assert isinstance(stop, int)
-    assert isinstance(amount, int)
+    #assert isinstance(start, int)
+    #assert isinstance(stop, int)
+    #assert isinstance(amount, int)
     ret = []
     for i in range(amount):
         ret.append(start + i*(float(abs(start - stop))/float(amount-1)))
-    assert len(ret) == amount
+    #assert len(ret) == amount
     return ret
 
 
