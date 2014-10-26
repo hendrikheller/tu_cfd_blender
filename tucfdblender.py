@@ -1,6 +1,6 @@
 __author__ = 'Hendrik Heller'
 
-bl_info = {"name": "Tu CFD Import",
+bl_info = {"name": "TU CFD Import",
            "category": "Import-Export"}
 
 import os
@@ -8,13 +8,11 @@ import time
 import numpy as np
 import bpy
 
-# todo: refactor docstrings
 
 class CfdImportPanel(bpy.types.Panel):
     """The UI Panel"""    # blender will use this as a tooltip for menu items and buttons.
     bl_idname = "scene.cfdimportpanel"      # unique identifier for buttons and menu items to reference.
     bl_label = "Import CFD Data"       # display name in the interface.
-    #bl_options = {'REGISTER', 'UNDO'}  # enable undo for the operator.
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "scene"
@@ -159,8 +157,6 @@ def clean_line(s):
 def parse_state(path):
     """Parse a state.dat file.
 
-    <long description goes here>
-
     Parameters
     ----------
     path : string
@@ -287,8 +283,6 @@ class StateDat:
 
 def parse_foout(path, lpp):
     """Parse a foout.dat file.
-
-    <long description goes here>
 
     Parameters
     ----------
@@ -418,23 +412,16 @@ def calc_steps(start, stop, amount):
 
 
 def insert_shapekey_keyframes(key, k, adj):
-    """Creates keyframes for shapekeys
-
-    <long description>
+    """Creates keyframes for a shapekey.
 
     Parameters
     ----------
     key : object.shape_key
         The starting point.
-    stop : int
+    k : int
         The ending point.
-    amount : int
-        The amount of steps to be calculated.
-
-    Returns
-    -------
-    ret : [step0, step1, ...]
-        A list of equally spaced steps between 'start' and 'stop'.
+    adj : float
+        The amount of frames between shapekeys.
     """
     steps = calc_steps(-1, 1, 3)
     for i, s in enumerate(steps):
@@ -469,11 +456,23 @@ def create_mesh(name, vertex_data, face_data):
     bpy.context.scene.objects.link(ob)
     mesh.from_pydata(vertex_data, [], face_data)
     mesh.update(calc_edges=True)
-    # ob.shade_smooth()
     return ob
 
 
 def import_mesh(filepath):
+    """
+    Imports a mesh object from a file. Supported are .stl and .ply files.
+
+    Parameters
+    ----------
+    filepath : string
+        The filepath of the mesh to import.
+
+    Returns
+    -------
+    mesh : Blender.object
+        Handle for the imported mesh.
+    """
     assert os.path.isfile(filepath)
     ending = filepath.split('.')[-1]
 
@@ -502,11 +501,8 @@ def create_surface_with_shapekeys(name, foout_data, constants):
         The name of the mesh object to be created.
     foout_data : [[vertexes], ...], (i, j, k)
         List of lists of all vertex infos for steps in the foout.dat and the dimensions of each step.
-    smoothing_function : f(x)
-        The function used to calculate the keyframe values for the shapekeys. Should return 0 at f(-1) and f(1) and 1 at
-        f(0).
-    smoothing_amount : int
-        Determines the amount by which shapekeys are blended together. 0 = no smoothing.
+    constants : {'lpp': v1, 'u0': v2, ...}
+        Dictionary containing the values for the constants lpp, u0, ucarriage, nfoout, dt and adj
 
     Returns
     -------
@@ -514,10 +510,7 @@ def create_surface_with_shapekeys(name, foout_data, constants):
         Handle for the created mesh.
     """
     surface = create_mesh(name, foout_data[0][0], calc_face_mapping(foout_data[1][0], foout_data[1][1]))
-
     surface.rotation_mode = 'ZYX'
-    # bpy.context.scene.objects.active = surface
-    # bpy.ops.object.shade_smooth()
 
     # Add Basis key
     surface.shape_key_add(from_mix=False)
@@ -572,6 +565,18 @@ def animate_camera(state_data, constants):
 
 
 def animate_ship(ship_object, state_data, constants):
+    """
+    Applies keyframes according to the parsed data to a ship object.
+
+    Parameters
+    ----------
+    ship_object : Blender.object
+        The ship object to be animated.
+    state_data : StateDat
+        A StateDat object containing the parsed data.
+    constants : {'lpp': v1, 'u0': v2, ...}
+        Dictionary containing the values for the constants lpp, u0, ucarriage, nfoout, dt and adj
+    """
     for i in range(state_data.length):
         loc_x = state_data.get_step_var(i, 'xor') * constants['lpp']
         loc_y = state_data.get_step_var(i, 'yor') * constants['lpp']
@@ -590,6 +595,18 @@ def animate_ship(ship_object, state_data, constants):
 
 
 def animate_surface(surface_object, state_data, constants):
+    """
+    Applies keyframes according to the parsed data to a surface object.
+
+    Parameters
+    ----------
+    surface_object : Blender.object
+        The surface object to be animated.
+    state_data : StateDat
+        A StateDat object containing the parsed data.
+    constants : {'lpp': v1, 'u0': v2, ...}
+        Dictionary containing the values for the constants lpp, u0, ucarriage, nfoout, dt and adj
+    """
     for i in range(state_data.length):
         loc_x = state_data.get_step_var(i, 'xor') * constants['lpp']
         loc_y = state_data.get_step_var(i, 'yor') * constants['lpp']
