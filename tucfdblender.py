@@ -98,6 +98,11 @@ class CfdImportOperator(bpy.types.Operator):
         context.scene.frame_end = state.length * constants['dt'] * (constants['lpp'] / constants['u0']) * 24
         context.scene.frame_current = 0
 
+        bpy.ops.object.select_all(action='DESELECT')
+        context.scene.objects.active = surface
+        surface.select = True
+        bpy.ops.object.shade_smooth()
+
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
 
 
