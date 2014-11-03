@@ -97,6 +97,11 @@ class CfdImportOperator(bpy.types.Operator):
         context.scene.frame_end = state.length * constants['dt'] * (constants['lpp'] / constants['u0']) * 24
         context.scene.frame_current = 0
 
+        bpy.ops.object.select_all(action='DESELECT')
+        context.scene.objects.active = surface
+        surface.select = True
+        bpy.ops.object.shade_smooth()
+
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
 
 
@@ -543,7 +548,7 @@ def animate_camera(state_data, constants):
     else:
         cam_obj = bpy.context.scene.camera
 
-    # position object
+    # position camera
     cam_obj.location = (0, -3*constants['lpp'], 2*constants['lpp'])
     # rotate camera to look towards origin
     cam_obj.rotation_euler = ((55 / 180*np.pi), 0, 0)
@@ -610,16 +615,14 @@ def animate_surface(surface_object, state_data, constants):
         loc_x = state_data.get_step_var(i, 'xor') * constants['lpp']
         loc_y = state_data.get_step_var(i, 'yor') * constants['lpp']
         loc_z = state_data.get_step_var(i, 'zor') * constants['lpp']
-        #rot_phi = state_data.get_step_var(i, 'ang1')
-        #rot_theta = state_data.get_step_var(i, 'ang2')
+        rot_phi = state_data.get_step_var(i, 'ang1')
+        rot_theta = state_data.get_step_var(i, 'ang2')
         rot_psi = state_data.get_step_var(i, 'ang3')
 
         frame = i * constants['dt'] * (constants['lpp'] / constants['u0']) * 24
 
-        # todo: figure out if reasoning is correct - surface only rotates on z-axis
         surface_object.location = (loc_x, loc_y, loc_z)
-        #surface_object.rotation_euler = (rot_phi, rot_theta, rot_psi)
-        surface_object.rotation_euler = (0, 0, rot_psi)
+        surface_object.rotation_euler = (rot_phi, -rot_theta, rot_psi)
 
         surface_object.keyframe_insert(data_path="location", frame=frame)
         surface_object.keyframe_insert(data_path="rotation_euler", frame=frame)
