@@ -11,7 +11,18 @@ It is specifically designed for data produced by the shipbuilding department at 
 
 Usage
 -----
-Installing the addon
+###Installing the addon
+##User Preferences
+
+##Script file
+
+###Where to find the addon
+
+###Adjusting parameters
+
+###Specifying filepaths
+
+###Importing the data
 
 
 
@@ -25,7 +36,7 @@ Input data
 ----------
 ###foout.dat
 1 - A file header of 4 lines:
-TITLE     = "nepIII results, free surface"
+TITLE     = "Insert your title here"
 VARIABLES = "X"
 "Y"
 "Z"
@@ -53,3 +64,7 @@ line 4: ang1, ang2, ang3, ang1p, ang2p, ang3p
 line 5: Xor, Yor, Zor, Ufest, Vfest, Wfest  
 
 This structure can be repeated indefinitely.
+
+###Ship mesh file (optional)
+Here a previously created mesh file can be specified to be used in the animation process.
+.STL and .PLY files are applicable.
