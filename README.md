@@ -12,9 +12,9 @@ It is specifically designed for data produced by the shipbuilding department at 
 Usage
 -----
 ###Installing the addon
-##User Preferences
+####User Preferences
 
-##Script file
+####Script file
 
 ###Where to find the addon
 
