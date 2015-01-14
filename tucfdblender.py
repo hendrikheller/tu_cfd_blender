@@ -19,7 +19,7 @@ class CfdImportPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        #scene = context.scene
+        # scene = context.scene
 
         # Variablen
         layout.label(text=" Length between perpendiculars:")
@@ -76,7 +76,13 @@ class CfdImportOperator(bpy.types.Operator):
         print('Parsing finished in ' + str(t1-t0) + ' milliseconds.')
 
         t2 = current_milli_time()
-        ship = import_mesh(context.scene.path_ship)
+        # todo: make having a ship mesh optional
+
+        if context.scene.path_ship == "":
+            ship = make_cube(0, 0, "ShipCube", context.scene)
+        else:
+            ship = import_mesh(context.scene.path_ship)
+
         ship.rotation_mode = 'ZYX'
         animate_ship(ship, state, constants)
         t3 = current_milli_time()
@@ -120,7 +126,7 @@ def register():
                                                  default=0.00330313015)
     bpy.types.Scene.path_state = bpy.props.StringProperty(name="state.dat", default=os.path.normpath("d:/blender kram/uhareksches ding/state_square.dat"), description="Define path to the state.dat file.", subtype='FILE_PATH')
     bpy.types.Scene.path_foout = bpy.props.StringProperty(name="foout.tec", default=os.path.normpath('d:/blender kram/uhareksches ding/foout_rect.dat'), description="Define path to the foout.tec file.", subtype='FILE_PATH')
-    bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship.stl", default=os.path.normpath('d:/blender kram/uhareksches ding/KCSship duplex 6.stl'), description="Define path to the foout.tec file.", subtype='FILE_PATH')
+    bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship mesh (optional)", default=os.path.normpath('d:/blender kram/uhareksches ding/KCSship duplex 6.stl'), description="Define path to ship mesh file (.STL or .PLY files).", subtype='FILE_PATH')
 
 
 def unregister():
@@ -157,6 +163,17 @@ def clean_line(s):
     assert only_single_spaces(t)
     assert t.count("\n") == 0
     return t
+
+
+def make_cube(x, y, name, passed_scene):
+    mesh = bpy.types.Mesh.Primitives.Cube(1)
+    ob = bpy.types.Object.New("Mesh", name)
+    ob.LocX = x
+    ob.LocY = y
+
+    ob.link(mesh)
+    passed_scene.link(ob)
+    return ob
 
 
 def parse_state(path):
