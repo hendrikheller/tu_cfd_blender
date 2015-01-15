@@ -128,7 +128,6 @@ def register():
                                                  default=0.00330313015)
     bpy.types.Scene.path_state = bpy.props.StringProperty(name="state.dat", default=os.path.normpath("d:/blender kram/uhareksches ding/state_square.dat"), description="Define path to the state.dat file.", subtype='FILE_PATH')
     bpy.types.Scene.path_foout = bpy.props.StringProperty(name="foout.tec", default=os.path.normpath('d:/blender kram/uhareksches ding/foout_rect.dat'), description="Define path to the foout.tec file.", subtype='FILE_PATH')
-    # bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship mesh (optional)", default=os.path.normpath('d:/blender kram/uhareksches ding/KCSship duplex 6.stl'), description="Define path to ship mesh file (.STL or .PLY files).", subtype='FILE_PATH')
     bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship mesh (optional)", description="Define path to ship mesh file (.STL or .PLY files).", subtype='FILE_PATH')
 
 
