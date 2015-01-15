@@ -1,7 +1,10 @@
 __author__ = 'Hendrik Heller'
 
 bl_info = {"name": "TU CFD Import",
-           "category": "Import-Export"}
+           "category": "Import-Export",
+           "author": "Hendrik Heller",
+           "blender": (2, 72, 0),
+           "description": "Imports and displays results of CFD data."}
 
 import os
 import time
@@ -76,10 +79,9 @@ class CfdImportOperator(bpy.types.Operator):
         print('Parsing finished in ' + str(t1-t0) + ' milliseconds.')
 
         t2 = current_milli_time()
-        # todo: make having a ship mesh optional
-
         if context.scene.path_ship == "":
-            ship = make_cube(0, 0, "ShipCube", context.scene)
+            bpy.ops.mesh.primitive_cube_add(radius=.5, view_align=False, enter_editmode=False, location=(0, 0, 0))
+            ship = bpy.context.active_object
         else:
             ship = import_mesh(context.scene.path_ship)
 
@@ -126,7 +128,8 @@ def register():
                                                  default=0.00330313015)
     bpy.types.Scene.path_state = bpy.props.StringProperty(name="state.dat", default=os.path.normpath("d:/blender kram/uhareksches ding/state_square.dat"), description="Define path to the state.dat file.", subtype='FILE_PATH')
     bpy.types.Scene.path_foout = bpy.props.StringProperty(name="foout.tec", default=os.path.normpath('d:/blender kram/uhareksches ding/foout_rect.dat'), description="Define path to the foout.tec file.", subtype='FILE_PATH')
-    bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship mesh (optional)", default=os.path.normpath('d:/blender kram/uhareksches ding/KCSship duplex 6.stl'), description="Define path to ship mesh file (.STL or .PLY files).", subtype='FILE_PATH')
+    # bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship mesh (optional)", default=os.path.normpath('d:/blender kram/uhareksches ding/KCSship duplex 6.stl'), description="Define path to ship mesh file (.STL or .PLY files).", subtype='FILE_PATH')
+    bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship mesh (optional)", description="Define path to ship mesh file (.STL or .PLY files).", subtype='FILE_PATH')
 
 
 def unregister():
@@ -165,15 +168,15 @@ def clean_line(s):
     return t
 
 
-def make_cube(x, y, name, passed_scene):
-    mesh = bpy.types.Mesh.Primitives.Cube(1)
-    ob = bpy.types.Object.New("Mesh", name)
-    ob.LocX = x
-    ob.LocY = y
-
-    ob.link(mesh)
-    passed_scene.link(ob)
-    return ob
+# def make_cube(x, y, name, passed_scene):
+#     mesh = bpy.types.Mesh.Primitives.Cube(1)
+#     ob = bpy.types.Object.New("Mesh", name)
+#     ob.LocX = x
+#     ob.LocY = y
+#
+#     ob.link(mesh)
+#     passed_scene.link(ob)
+#     return ob
 
 
 def parse_state(path):
@@ -504,7 +507,7 @@ def import_mesh(filepath):
     elif ending == 'ply':
         bpy.ops.import_mesh.ply(filepath=filepath)
 
-    mesh = bpy.context.scene.objects[filepath.split(os.path.sep)[-1].split('.')[0]]
+    mesh = bpy.context.scene.active_object
 
     return mesh
 
@@ -661,23 +664,6 @@ def lin(x):
     float
     """
     return -1*abs(float(x)) + 1
-
-
-def quad(x):
-    """A quadratic function for shapekey smoothing.
-
-    A quadratic function designed to return 0 for x=-1 and x=1 and to return 1 for x=0
-
-    Parameters
-    ----------
-    x : float
-        The input value.
-
-    Returns
-    -------
-    float
-    """
-    return -(x*x)+1
 
 
 # --- TEST UTILITIES ---
