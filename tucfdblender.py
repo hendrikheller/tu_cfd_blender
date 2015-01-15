@@ -491,7 +491,7 @@ def import_mesh(filepath):
     elif ending == 'ply':
         bpy.ops.import_mesh.ply(filepath=filepath)
 
-    mesh = bpy.context.scene.active_object
+    mesh = bpy.context.active_object
 
     return mesh
 
