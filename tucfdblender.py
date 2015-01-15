@@ -19,7 +19,6 @@ class CfdImportPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        #scene = context.scene
 
         # constants
         layout.label(text=" Length between perpendiculars:")
@@ -76,7 +75,6 @@ class CfdImportOperator(bpy.types.Operator):
         # print('Parsing finished in ' + str(t1-t0) + ' milliseconds.')
 
         # t2 = current_milli_time()
-        ship = import_mesh(context.scene.path_ship)
         if context.scene.path_ship == "":
             bpy.ops.mesh.primitive_cube_add(radius=.5, view_align=False, enter_editmode=False, location=(0, 0, 0))
             ship = bpy.context.active_object
