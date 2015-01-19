@@ -1,7 +1,10 @@
 __author__ = 'Hendrik Heller'
 
 bl_info = {"name": "TU CFD Import",
-           "category": "Import-Export"}
+           "category": "Import-Export",
+           "author": "Hendrik Heller",
+           "blender": (2, 72, 0),
+           "description": "Imports and displays results of CFD data."}
 
 import os
 import time
@@ -122,9 +125,9 @@ def register():
     bpy.types.Scene.nfoout = bpy.props.IntProperty(name="nfoout", description="Writing steps of foout.", default=100)
     bpy.types.Scene.dt = bpy.props.FloatProperty(name="dt", description="Non-dimensional timestep.", precision=11,
                                                  default=0.00330313015)
-    bpy.types.Scene.path_state = bpy.props.StringProperty(name="state.dat", default='D:\blender kram\uhareksches ding\state_square.dat', description="Define path to the state.dat file.", subtype='FILE_PATH')
-    bpy.types.Scene.path_foout = bpy.props.StringProperty(name="foout.tec", default='D:\blender kram\uhareksches ding\foout_rect.dat', description="Define path to the foout.tec file.", subtype='FILE_PATH')
-    bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship.stl", default='D:\blender kram\uhareksches ding\KCSship_clean.stl', description="Define path to the foout.tec file.", subtype='FILE_PATH')
+    bpy.types.Scene.path_state = bpy.props.StringProperty(name="state.dat", default='D:\\blender kram\\uhareksches ding\\state_square.dat', description="Define path to the state.dat file.", subtype='FILE_PATH')
+    bpy.types.Scene.path_foout = bpy.props.StringProperty(name="foout.tec", default='D:\\blender kram\\uhareksches ding\\foout_rect.dat', description="Define path to the foout.tec file.", subtype='FILE_PATH')
+    bpy.types.Scene.path_ship = bpy.props.StringProperty(name="ship.stl", default='D:\\blender kram\\uhareksches ding\\KCSship_clean.stl', description="Define path to the foout.tec file.", subtype='FILE_PATH')
 
 
 def unregister():

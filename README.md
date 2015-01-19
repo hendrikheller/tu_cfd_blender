@@ -16,23 +16,18 @@ There are two ways load the TU CFD Import addon into Blender:
 ####User Preferences
 Navigate to File->User Preferences->Addons.
 Pressing "Install from File..." opens up a file explorer, navigate to the "tucfdblender.py" file and confirm.
-The addon is now listed under "Import-Export: TU CFD Import
+The addon is now listed under "Import-Export: TU CFD Import".
+Activate the addon by checking the checkbox on the right.
+Pressing "Save User Settings" saves the current state permanently.
 
 ####Script file
+For a single use of the addon open the Text Editor in one of active Blender windows.
+Open the "tucfdblender.py" file and press "Run Script".
+
+This method will not keep the addon installed.
 
 ###Where to find the addon
-
-###Adjusting parameters
-
-###Specifying filepaths
-
-###Importing the data
-
-
-
-Example
--------
-tbd
+The UI panel of the addon can now be found in the "Properties" window under the register "Scene".
 
 
 
