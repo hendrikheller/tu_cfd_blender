@@ -360,12 +360,12 @@ def calc_face_mapping(dim_i, dim_j):
     assert dim_i > 0 and dim_j > 0
     # create the face mapping
     mapping = []
-    for i in range(dim_i-1):
-        for j in range(dim_j-1):
-            v0 = i*dim_j+j
-            v1 = i*dim_j+j+1
-            v2 = i*dim_j+j+dim_i
-            v3 = i*dim_j+j+dim_i+1
+    for j in range(dim_j-1):
+        for i in range(dim_i-1):
+            v0 = j*dim_i+i
+            v1 = j*dim_i+i+1
+            v2 = (j+1)*dim_i+i
+            v3 = (j+1)*dim_i+i+1
             # order here is important for proper faces
             mapping.append((v0, v2, v3, v1))
 
